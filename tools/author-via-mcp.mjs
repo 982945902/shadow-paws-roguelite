@@ -431,6 +431,22 @@ try {
     outputDirectory: webDirectory,
     sceneName: "Game",
   });
+  await fs.writeFile(
+    path.join(webDirectory, "manifest.webmanifest"),
+    JSON.stringify(
+      {
+        name: "Shadow Paws: Rift Survivor",
+        short_name: "Shadow Paws",
+        start_url: ".",
+        display: "fullscreen",
+        orientation: "landscape",
+        background_color: "#110f2d",
+        theme_color: "#110f2d",
+      },
+      null,
+      2,
+    ),
+  );
   console.log(JSON.stringify({ projectFile, webDirectory, description }, null, 2));
   await call("close_project", { projectId });
 } finally {
