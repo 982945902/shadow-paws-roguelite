@@ -1,0 +1,13 @@
+{
+  "name": "shadow-paws-roguelite",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "author": "node tools/author-via-mcp.mjs",
+    "verify:native": "node tools/verify-native-project.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
+}
