@@ -5,6 +5,8 @@ server. The project deliberately contains no monolithic JavaScript gameplay
 event: objects, behaviors, variables, conditions, and actions are visible in
 the GDevelop editor.
 
+Play the production build: https://shadow-paws-roguelite.vercel.app
+
 ## Controls
 
 - `A` / `D`: move
