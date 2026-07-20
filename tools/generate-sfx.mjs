@@ -52,6 +52,18 @@ await writeWav("impact.wav", 0.28, (time, duration) => {
   return attack(time, 0.002) * decay(time, duration, 3) * (body * 0.72 + noise() * 0.34);
 });
 
+await writeWav("hit-confirm.wav", 0.11, (time, duration) => {
+  const click = Math.sin(2 * Math.PI * (1850 - 900 * time / duration) * time);
+  return attack(time, 0.001) * decay(time, duration, 5) * (click * 0.46 + noise() * 0.38);
+});
+
+await writeWav("heavy-impact.wav", 0.42, (time, duration) => {
+  const sub = Math.sin(2 * Math.PI * (78 - 36 * time / duration) * time);
+  const body = Math.sin(2 * Math.PI * (148 - 80 * time / duration) * time);
+  const crack = time < 0.045 ? noise() * decay(time, 0.045, 2.5) : 0;
+  return attack(time, 0.001) * decay(time, duration, 2.4) * (sub * 0.64 + body * 0.32) + crack * 0.42;
+});
+
 await writeWav("dash.wav", 0.3, (time, duration) => {
   const sweep = Math.sin(2 * Math.PI * (420 + 780 * time / duration) * time);
   return attack(time, 0.015) * decay(time, duration, 1.4) * (sweep * 0.35 + noise() * 0.22);
@@ -69,4 +81,4 @@ await writeWav("boss-roar.wav", 0.85, (time, duration) => {
   return attack(time, 0.04) * decay(time, duration, 1.1) * (pulse * 0.7 + noise() * 0.17);
 });
 
-console.log(`Generated five sound effects in ${output}`);
+console.log(`Generated seven sound effects in ${output}`);

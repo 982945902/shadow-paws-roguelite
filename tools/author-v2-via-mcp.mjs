@@ -78,6 +78,11 @@ const show = (object) => instruction("Show", [object]);
 const hide = (object) => instruction("Hide", [object]);
 const play = (resource, volume = 80, pitch = 1) =>
   instruction("PlaySound", ["", resource, "", volume, pitch]);
+const animation = (name) =>
+  instruction("AnimatableCapability::AnimatableBehavior::SetName", ["HeroRig", "Animation", "=", quoted(name)]);
+const flipRig = (flipped) =>
+  instruction("FlippableCapability::FlippableBehavior::FlipX", ["HeroRig", "Flippable", flipped ? "yes" : "no"]);
+const layerTimeScale = (value) => instruction("ChangeLayerTimeScale", ["", "", value]);
 const resize = (object, width, height) => [
   instruction("ResizableCapability::ResizableBehavior::SetWidth", [object, "Resizable", "=", width]),
   instruction("ResizableCapability::ResizableBehavior::SetHeight", [object, "Resizable", "=", height]),
@@ -126,7 +131,36 @@ try {
       kind: "image",
     });
   }
-  for (const fileName of ["slash.wav", "impact.wav", "dash.wav", "pickup.wav", "boss-roar.wav"]) {
+  const rigParts = ["head", "torso", "cape", "tail", "rear_upper_arm", "rear_forearm", "front_upper_arm", "front_forearm", "rear_thigh", "rear_shin", "front_thigh", "front_shin", "dagger"];
+  for (const part of rigParts) {
+    await call("import_resource", {
+      projectId,
+      sourceFile: path.join(root, "assets", "hero-rig-v3", `${part}.png`),
+      resourceName: `hero-rig-v3/${part}.png`,
+      kind: "image",
+    });
+  }
+  await call("import_resource", {
+    projectId,
+    sourceFile: path.join(root, "assets", "hero-rig-v3.atlas"),
+    resourceName: "hero-rig-v3.atlas",
+    kind: "atlas",
+    metadata: { embeddedResourcesMapping: Object.fromEntries(rigParts.map((part) => [`hero-rig-v3/${part}.png`, `hero-rig-v3/${part}.png`])) },
+  });
+  await call("import_resource", {
+    projectId,
+    sourceFile: path.join(root, "assets", "hero-rig-v3.json"),
+    resourceName: "hero-rig-v3.json",
+    kind: "spine",
+    metadata: { embeddedResourcesMapping: { "hero-rig-v3.atlas": "hero-rig-v3.atlas" } },
+  });
+  await call("import_resource", {
+    projectId,
+    sourceFile: path.join(root, "assets", "impact-burst-v3.svg"),
+    resourceName: "impact-burst-v3.svg",
+    kind: "image",
+  });
+  for (const fileName of ["slash.wav", "impact.wav", "hit-confirm.wav", "heavy-impact.wav", "dash.wav", "pickup.wav", "boss-roar.wav"]) {
     await call("import_resource", {
       projectId,
       sourceFile: path.join(root, "assets", "sfx", fileName),
@@ -151,6 +185,8 @@ try {
     Shake: 0,
     BossSpawned: 0,
     RunTime: 0,
+    HitStop: 0,
+    TestMode: 0,
   };
   for (const [name, value] of Object.entries(sceneVariables)) {
     await call("set_scene_variable", { projectId, sceneName: "Game", name, value });
@@ -194,8 +230,28 @@ try {
         DashCooldown: 1.15,
         Dashing: 0,
         Lifesteal: 0,
+        Pose: 0,
       },
       behaviors: [platformer(360)],
+    },
+    {
+      name: "HeroRig",
+      type: "SpineObject::SpineObject",
+      resourceName: "hero-rig-v3.json",
+      spine: {
+        scale: 0.2,
+        animations: [
+          { name: "idle", loop: true },
+          { name: "run", loop: true },
+          { name: "jump", loop: false },
+          { name: "attack1", loop: false },
+          { name: "attack2", loop: false },
+          { name: "attack3", loop: false },
+          { name: "heavy", loop: false },
+          { name: "dash", loop: false },
+          { name: "hurt", loop: false },
+        ],
+      },
     },
     {
       name: "Hound",
@@ -225,6 +281,7 @@ try {
     { name: "Gem", type: "Sprite", resourceName: "gem.svg", collisionMask: { width: 32, height: 32 } },
     { name: "Bolt", type: "Sprite", resourceName: "bolt-v2.svg", collisionMask: { width: 48, height: 48 }, variables: { Direction: -1 } },
     { name: "Shockwave", type: "Sprite", resourceName: "shockwave-v2.svg", collisionMask: { width: 120, height: 76 }, variables: { Direction: -1 } },
+    { name: "ImpactBurst", type: "Sprite", resourceName: "impact-burst-v3.svg" },
     { name: "Gate", type: "Sprite", resourceName: "gate-v2.svg" },
     { name: "HudMain", type: "TextObject::Text", text: "", characterSize: 22, color: "239;248;255", textStyle },
     { name: "HudSub", type: "TextObject::Text", text: "", characterSize: 17, color: "142;246;232", textStyle },
@@ -264,6 +321,7 @@ try {
     ["Ground", 1260, 330, "", 1, 220, 30],
     ["Ground", 2160, 360, "", 1, 250, 30],
     ["Player", 140, 355, "", 10, 110, 110],
+    ["HeroRig", 140, 330, "", 12],
     ["Gate", 865, 130, "", 8, 72, 340],
     ["Gate", 1825, 130, "", 8, 72, 340],
     ["HudMain", 20, 16, "HUD", 50],
@@ -308,7 +366,9 @@ try {
         resetObjectTimer("Player", "hurt"),
         resetObjectTimer("Player", "dash"),
         resetObjectTimer("Player", "combo"),
-        hide("Player"), hide("Gate"), hide("HudMain"), hide("HudSub"), hide("Controls"), hide("RoomBanner"),
+        resetObjectTimer("Player", "pose"),
+        resetSceneTimer("hitstop"), layerTimeScale(1),
+        hide("Player"), hide("HeroRig"), hide("Gate"), hide("HudMain"), hide("HudSub"), hide("Controls"), hide("RoomBanner"),
         hide("UpgradeTitle"), hide("ChoiceA"), hide("ChoiceB"), hide("ChoiceC"),
         hide("BossHud"), hide("DeathText"), hide("VictoryText"),
       ],
@@ -316,7 +376,7 @@ try {
   );
   events.push(
     standard([sceneIs("State", "=", 0), key("Return"), once()], [
-      sceneVar("State", "=", 1), show("Player"), show("Gate"), show("HudMain"), show("HudSub"), show("Controls"),
+      sceneVar("State", "=", 1), show("Player"), show("HeroRig"), instruction("Opacity", ["Player", "=", 0]), show("Gate"), show("HudMain"), show("HudSub"), show("Controls"),
       hide("TitleText"), hide("SubtitleText"), hide("StartText"),
       show("RoomBanner"), text("RoomBanner", "CHAPTER I  ·  THE SHATTERED PATH"),
       resetSceneTimer("banner"), resetSceneTimer("spawn"), play("boss-roar.wav", 48, 1.35),
@@ -325,27 +385,36 @@ try {
   events.push(standard([sceneTimer("banner", 2.2)], [hide("RoomBanner")]));
 
   events.push(comment("01 · RESPONSIVE PLATFORMER MOVEMENT AND DASH"));
+  events.push(standard([], [
+    instruction("SetX", ["HeroRig", "=", "Player.X()+72"]),
+    instruction("SetY", ["HeroRig", "=", "Player.Y()-32"]),
+  ]));
   events.push(standard([...gameplayState, key("a")], [
     instruction("PlatformBehavior::SimulateLeftKey", ["Player", "Platformer"]),
-    instruction("FlipX", ["Player", "yes"]), objectVar("Player", "Facing", "=", -1),
+    instruction("FlipX", ["Player", "yes"]), flipRig(true), objectVar("Player", "Facing", "=", -1),
   ]));
   events.push(standard([...gameplayState, key("d")], [
     instruction("PlatformBehavior::SimulateRightKey", ["Player", "Platformer"]),
-    instruction("FlipX", ["Player", "no"]), objectVar("Player", "Facing", "=", 1),
+    instruction("FlipX", ["Player", "no"]), flipRig(false), objectVar("Player", "Facing", "=", 1),
   ]));
   events.push(standard([...gameplayState, key("Space")], [
     instruction("PlatformBehavior::SimulateJumpKey", ["Player", "Platformer"]),
   ]));
   events.push(standard([...gameplayState, key("LShift"), once(), objectTimer("Player", "dash", ">", "Player.Variable(DashCooldown)")], [
-    objectVar("Player", "Dashing", "=", 1), resetObjectTimer("Player", "dash"),
-    instruction("Opacity", ["Player", "=", 145]), play("dash.wav", 75, 1), sceneVar("Shake", "=", 4),
+    objectVar("Player", "Dashing", "=", 1), objectVar("Player", "Pose", "=", 5), resetObjectTimer("Player", "dash"), resetObjectTimer("Player", "pose"),
+    instruction("Opacity", ["HeroRig", "=", 145]), animation("dash"), play("dash.wav", 75, 1), sceneVar("Shake", "=", 4),
   ]));
   events.push(standard([...gameplayState, objectIs("Player", "Dashing", "=", 1), objectTimer("Player", "dash", "<", 0.18)], [
     instruction("SetX", ["Player", "=", "Player.X()+Player.Variable(Facing)*720*TimeDelta()"]),
   ]));
   events.push(standard([objectIs("Player", "Dashing", "=", 1), objectTimer("Player", "dash", ">=", 0.18)], [
-    objectVar("Player", "Dashing", "=", 0), instruction("Opacity", ["Player", "=", 255]),
+    objectVar("Player", "Dashing", "=", 0), objectVar("Player", "Pose", "=", 0), instruction("Opacity", ["HeroRig", "=", 255]),
   ]));
+
+  events.push(standard([...gameplayState, objectIs("Player", "Pose", "=", 0), instruction("PlatformBehavior::IsOnFloor", ["Player", "Platformer"]), key("a")], [animation("run")]));
+  events.push(standard([...gameplayState, objectIs("Player", "Pose", "=", 0), instruction("PlatformBehavior::IsOnFloor", ["Player", "Platformer"]), key("d")], [animation("run")]));
+  events.push(standard([...gameplayState, objectIs("Player", "Pose", "=", 0), instruction("PlatformBehavior::IsOnFloor", ["Player", "Platformer"]), instruction("KeyPressed", ["", "a"], true), instruction("KeyPressed", ["", "d"], true)], [animation("idle")]));
+  events.push(standard([...gameplayState, objectIs("Player", "Pose", "=", 0), instruction("PlatformBehavior::IsOnFloor", ["Player", "Platformer"], true)], [animation("jump")]));
 
   events.push(comment("02 · THREE-HIT CLAW COMBO AND HEAVY ATTACK"));
   const comboAttack = (combo, facing, objectName, multiplier, nextCombo) => {
@@ -361,7 +430,7 @@ try {
         ...(!right ? [instruction("FlipX", [objectName, "yes"])] : []),
         objectVar(objectName, "Damage", "=", `Player.Variable(Damage)*${multiplier}`),
         resetObjectTimer(objectName, "life"), resetObjectTimer("Player", "attack"), resetObjectTimer("Player", "combo"),
-        objectVar("Player", "Combo", "=", nextCombo),
+        resetObjectTimer("Player", "pose"), objectVar("Player", "Pose", "=", combo + 1), objectVar("Player", "Combo", "=", nextCombo), animation(`attack${combo + 1}`),
         ...(objectName === "HeavySlash" ? [sceneVar("Shake", "=", 6)] : []),
         play("slash.wav", objectName === "HeavySlash" ? 90 : 72, objectName === "HeavySlash" ? 0.82 : `RandomFloatInRange(0.96,1.08)`),
       ],
@@ -379,12 +448,14 @@ try {
       create("HeavySlash", right ? "Player.X()+52" : "Player.X()-210", "Player.Y()-26"),
       ...(!right ? [instruction("FlipX", ["HeavySlash", "yes"])] : []),
       objectVar("HeavySlash", "Damage", "=", "Player.Variable(Damage)*2.15"),
-      resetObjectTimer("HeavySlash", "life"), resetObjectTimer("Player", "heavy"),
-      sceneVar("Shake", "=", 9), play("slash.wav", 95, 0.68),
+      resetObjectTimer("HeavySlash", "life"), resetObjectTimer("Player", "heavy"), resetObjectTimer("Player", "pose"),
+      objectVar("Player", "Pose", "=", 4), animation("heavy"), sceneVar("Shake", "=", 9), play("slash.wav", 95, 0.68),
     ]));
   }
   events.push(standard([objectTimer("Slash", "life", ">", 0.13)], [instruction("Delete", ["Slash", ""])]));
   events.push(standard([objectTimer("HeavySlash", "life", ">", 0.2)], [instruction("Delete", ["HeavySlash", ""])]));
+  events.push(standard([objectIs("Player", "Pose", ">", 0), objectIs("Player", "Pose", "<", 4), objectTimer("Player", "pose", ">", 0.42)], [objectVar("Player", "Pose", "=", 0)]));
+  events.push(standard([objectIs("Player", "Pose", "=", 4), objectTimer("Player", "pose", ">", 0.58)], [objectVar("Player", "Pose", "=", 0)]));
 
   events.push(comment("03 · ROOM I AND ROOM II ENCOUNTER DIRECTOR"));
   events.push(standard([...gameplayState, sceneIs("Room", "=", 1), sceneIs("SpawnRemaining", ">", 0), sceneTimer("spawn", 1.08)], [
@@ -440,18 +511,31 @@ try {
   events.push(standard([objectTimer("Shockwave", "life", ">", 4)], [instruction("Delete", ["Shockwave", ""])]));
 
   events.push(comment("05 · HIT RESOLUTION, FLASH, LOOT, AND PLAYER DAMAGE"));
-  const attackHit = (attackObject, enemyObject) => standard(
-    [collision(attackObject, enemyObject)],
-    [
-      objectVar(enemyObject, "Health", "-", `${attackObject}.Variable(Damage)`),
-      instruction("Opacity", [enemyObject, "=", 80]), resetObjectTimer(enemyObject, "hit"),
-      instruction("Delete", [attackObject, ""]), sceneVar("Shake", "=", enemyObject === "Boss" ? 10 : 6),
-      play("impact.wav", enemyObject === "Boss" ? 88 : 72, `RandomFloatInRange(0.92,1.08)`),
-    ],
-  );
+  const attackHit = (attackObject, enemyObject) => {
+    const heavy = attackObject === "HeavySlash";
+    const knockback = enemyObject === "Boss" ? (heavy ? 22 : 12) : (heavy ? 54 : 30);
+    return standard(
+      [collision(attackObject, enemyObject)],
+      [
+        objectVar(enemyObject, "Health", "-", `${attackObject}.Variable(Damage)`),
+        instruction("Opacity", [enemyObject, "=", 55]), resetObjectTimer(enemyObject, "hit"),
+        instruction("SetX", [enemyObject, "+", `sign(${enemyObject}.X()-Player.X())*${knockback}`]),
+        create("ImpactBurst", `${enemyObject}.X()+${enemyObject}.Width()/2-50`, `${enemyObject}.Y()+${enemyObject}.Height()/2-50`),
+        ...resize("ImpactBurst", heavy ? 125 : 92, heavy ? 125 : 92), resetObjectTimer("ImpactBurst", "life"),
+        instruction("Delete", [attackObject, ""]), sceneVar("Shake", "=", enemyObject === "Boss" ? (heavy ? 15 : 10) : (heavy ? 11 : 7)),
+        sceneVar("HitStop", "=", heavy ? 2 : 1), resetSceneTimer("hitstop"), layerTimeScale(0.03),
+        play("impact.wav", enemyObject === "Boss" ? 90 : 76, `RandomFloatInRange(0.92,1.08)`),
+        play("hit-confirm.wav", heavy ? 92 : 74, heavy ? 0.8 : 1.1),
+        ...(heavy ? [play("heavy-impact.wav", 96, enemyObject === "Boss" ? 0.72 : 0.9)] : []),
+      ],
+    );
+  };
   for (const attackObject of ["Slash", "HeavySlash"]) {
     for (const enemyObject of ["Hound", "Moth", "Boss"]) events.push(attackHit(attackObject, enemyObject));
   }
+  events.push(standard([sceneIs("HitStop", "=", 1), sceneTimer("hitstop", 0.045)], [layerTimeScale(1), sceneVar("HitStop", "=", 0)]));
+  events.push(standard([sceneIs("HitStop", "=", 2), sceneTimer("hitstop", 0.085)], [layerTimeScale(1), sceneVar("HitStop", "=", 0)]));
+  events.push(standard([objectTimer("ImpactBurst", "life", ">", 0.11)], [instruction("Delete", ["ImpactBurst", ""])]));
   for (const enemyObject of ["Hound", "Moth", "Boss"]) {
     events.push(standard([objectTimer(enemyObject, "hit", ">", 0.085)], [instruction("Opacity", [enemyObject, "=", 255])]));
   }
@@ -473,8 +557,11 @@ try {
   const playerHit = (enemyObject, damage, deleteAttacker = false) => standard(
     [...gameplayState, collision("Player", enemyObject), objectIs("Player", "Dashing", "=", 0), objectTimer("Player", "hurt", ">", 0.95)],
     [
-      objectVar("Player", "Health", "-", damage), resetObjectTimer("Player", "hurt"),
-      instruction("Opacity", ["Player", "=", 105]), sceneVar("Shake", "=", 12), play("impact.wav", 86, 0.78),
+      objectVar("Player", "Health", "-", damage), resetObjectTimer("Player", "hurt"), resetObjectTimer("Player", "pose"),
+      instruction("SetX", ["Player", "+", `sign(Player.X()-${enemyObject}.X())*38`]),
+      objectVar("Player", "Pose", "=", 6), animation("hurt"), instruction("Opacity", ["HeroRig", "=", 80]),
+      sceneVar("Shake", "=", 13), sceneVar("HitStop", "=", 2), resetSceneTimer("hitstop"), layerTimeScale(0.03),
+      play("impact.wav", 88, 0.74), play("heavy-impact.wav", 78, 0.68),
       ...(deleteAttacker ? [instruction("Delete", [enemyObject, ""])] : []),
     ],
   );
@@ -483,7 +570,8 @@ try {
   events.push(playerHit("Boss", "Boss.Variable(Damage)"));
   events.push(playerHit("Bolt", 9, true));
   events.push(playerHit("Shockwave", 15, true));
-  events.push(standard([objectTimer("Player", "hurt", ">", 0.16), objectIs("Player", "Dashing", "=", 0)], [instruction("Opacity", ["Player", "=", 255])]));
+  events.push(standard([objectTimer("Player", "hurt", ">", 0.16), objectIs("Player", "Dashing", "=", 0)], [instruction("Opacity", ["HeroRig", "=", 255])]));
+  events.push(standard([objectIs("Player", "Pose", "=", 6), objectTimer("Player", "pose", ">", 0.26)], [objectVar("Player", "Pose", "=", 0)]));
 
   events.push(comment("06 · DISTINCT RANDOMIZED ROGUELITE BLESSINGS"));
   const offerUpgrade = (room) => standard([...gameplayState, sceneIs("Room", "=", room), sceneIs("SpawnRemaining", "=", 0), sceneIs("Alive", "=", 0)], [
@@ -561,6 +649,25 @@ try {
   events.push(standard([instruction("PosY", ["Player", ">", 650]), sceneIs("State", "=", 1)], [
     instruction("SetY", ["Player", "=", 300]), objectVar("Player", "Health", "-", 20), sceneVar("Shake", "=", 12),
   ]));
+
+  if (process.env.GDEVELOP_GAME_TEST_MODE === "1") {
+    events.push(comment("TEST MODE · T isolates the hero rig for browser verification"));
+    events.push(standard([key("t")], [sceneVar("TestMode", "=", 1), sceneVar("State", "=", 1), show("Player"), show("HeroRig")]));
+    events.push(standard([sceneIs("TestMode", "=", 1)], [
+      instruction("Delete", ["Hound", ""]), instruction("Delete", ["Moth", ""]), instruction("Delete", ["Boss", ""]),
+      instruction("Delete", ["Bolt", ""]), instruction("Delete", ["Shockwave", ""]),
+      sceneVar("Alive", "=", 1), sceneVar("SpawnRemaining", "=", 0), objectVar("Player", "Health", "=", 160),
+      instruction("SetX", ["Player", "=", 300]), instruction("Opacity", ["Player", "=", 0]),
+    ]));
+    events.push(standard([sceneIs("TestMode", "=", 1), key("y")], [
+      animation("heavy"),
+      instruction("AnimatableCapability::AnimatableBehavior::SetElapsedTime", ["HeroRig", "Animation", "=", 0.3]),
+      instruction("AnimatableCapability::AnimatableBehavior::PauseAnimation", ["HeroRig", "Animation"]),
+    ]));
+    events.push(standard([sceneIs("TestMode", "=", 1), key("i")], [
+      animation("idle"), instruction("AnimatableCapability::AnimatableBehavior::PlayAnimation", ["HeroRig", "Animation"]),
+    ]));
+  }
 
   await call("set_scene_events", { projectId, sceneName: "Game", mode: "replace", events });
   await call("save_project", { projectId });

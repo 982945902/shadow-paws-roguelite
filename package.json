@@ -7,6 +7,7 @@
     "author": "node tools/author-v2-via-mcp.mjs",
     "author:v1": "node tools/author-via-mcp.mjs",
     "sfx": "node tools/generate-sfx.mjs",
+    "rig:build": "node tools/build-spine-rig.mjs",
     "verify:native": "node tools/verify-native-project.mjs"
   },
   "dependencies": {

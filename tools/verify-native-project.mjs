@@ -22,15 +22,21 @@ assert.ok(
   ),
   "Platformer behavior is missing",
 );
-for (const objectName of ["Player", "Hound", "Moth", "Boss", "Slash", "HeavySlash", "Bolt", "Shockwave"]) {
+assert.ok(
+  scene.objects.some((object) => object.name === "HeroRig" && object.type === "SpineObject::SpineObject"),
+  "Native Spine hero rig is missing",
+);
+for (const objectName of ["Player", "HeroRig", "Hound", "Moth", "Boss", "Slash", "HeavySlash", "ImpactBurst", "Bolt", "Shockwave"]) {
   assert.ok(scene.objects.some((object) => object.name === objectName), `${objectName} is missing`);
 }
-for (const resourceName of ["hero-v2.png", "hound-v2.png", "moth-v2.png", "boss-v2.png", "slash.wav", "impact.wav"]) {
+for (const resourceName of ["hero-rig-v3.json", "hero-rig-v3.atlas", "hound-v2.png", "moth-v2.png", "boss-v2.png", "slash.wav", "impact.wav", "hit-confirm.wav", "heavy-impact.wav"]) {
   assert.ok(
     project.resources.resources.some((resource) => resource.name === resourceName),
     `${resourceName} is missing`,
   );
 }
+const spine = project.resources.resources.find((resource) => resource.name === "hero-rig-v3.json");
+assert.equal(spine.kind, "spine", "Hero rig must use a native Spine resource");
 console.log(
   `Native verification passed: ${scene.objects.length} objects, ${scene.instances.length} instances, ${scene.events.length} top-level events, 0 JavaScript events.`,
 );

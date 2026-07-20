@@ -22,6 +22,10 @@ Play the production build: https://shadow-paws-roguelite.vercel.app
 - Three connected chapters with a scrolling camera and encounter gates.
 - Responsive platformer movement, three-hit combo, heavy attack, dash, hit
   flash, camera shake, knock-through invulnerability, and procedural sound FX.
+- A native Spine cutout rig with 15 bones, 13 painted attachments, and nine
+  authored animations for idle, run, jump, combo, heavy, dash, and hurt poses.
+- Layer-based hit-stop, attack-specific knockback, impact bursts, hurt poses,
+  and layered light/heavy hit-confirm audio.
 - Rift Hounds, flying Moth shooters, hostile projectiles, loot, and healing.
 - Randomized three-choice blessings that change damage, health, attack speed,
   movement, dash cooldown, or kill healing.
@@ -37,7 +41,7 @@ Play the production build: https://shadow-paws-roguelite.vercel.app
   choices, camera shake, and run statistics.
 - Object variables hold health, damage, combo state, facing, dash state, and
   build modifiers.
-- The event sheet handles 106 top-level native events, with zero JavaScript
+- The event sheet handles 117 top-level native events, with zero JavaScript
   events.
 - `game.json` is the editable source of truth; `web/` is a reproducible GDJS export.
 
@@ -56,4 +60,7 @@ npm run author
 ```
 
 This creates `game.json` and exports a static web build to `web/`. Run
-`npm run sfx` to regenerate the five deterministic procedural sound effects.
+`npm run sfx` to regenerate the seven deterministic procedural sound effects.
+`npm run rig:build` rebuilds the Spine skeleton data from the checked-in
+transparent attachments. `tools/split-rig-atlas.py` can re-cut the source atlas
+when Pillow is available.
