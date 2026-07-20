@@ -1,0 +1,103 @@
+hero-rig-v3/head.png
+size: 312, 321
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+head
+  bounds: 0, 0, 312, 321
+
+hero-rig-v3/torso.png
+size: 308, 414
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+torso
+  bounds: 0, 0, 308, 414
+
+hero-rig-v3/cape.png
+size: 505, 226
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+cape
+  bounds: 0, 0, 505, 226
+
+hero-rig-v3/tail.png
+size: 311, 327
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+tail
+  bounds: 0, 0, 311, 327
+
+hero-rig-v3/rear_upper_arm.png
+size: 159, 243
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+rear_upper_arm
+  bounds: 0, 0, 159, 243
+
+hero-rig-v3/rear_forearm.png
+size: 240, 214
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+rear_forearm
+  bounds: 0, 0, 240, 214
+
+hero-rig-v3/front_upper_arm.png
+size: 170, 238
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+front_upper_arm
+  bounds: 0, 0, 170, 238
+
+hero-rig-v3/front_forearm.png
+size: 249, 184
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+front_forearm
+  bounds: 0, 0, 249, 184
+
+hero-rig-v3/rear_thigh.png
+size: 165, 301
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+rear_thigh
+  bounds: 0, 0, 165, 301
+
+hero-rig-v3/rear_shin.png
+size: 175, 285
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+rear_shin
+  bounds: 0, 0, 175, 285
+
+hero-rig-v3/front_thigh.png
+size: 204, 294
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+front_thigh
+  bounds: 0, 0, 204, 294
+
+hero-rig-v3/front_shin.png
+size: 160, 287
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+front_shin
+  bounds: 0, 0, 160, 287
+
+hero-rig-v3/dagger.png
+size: 334, 338
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+dagger
+  bounds: 0, 0, 334, 338
