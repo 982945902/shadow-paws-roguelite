@@ -321,7 +321,7 @@ try {
     ["Ground", 1260, 330, "", 1, 220, 30],
     ["Ground", 2160, 360, "", 1, 250, 30],
     ["Player", 140, 355, "", 10, 110, 110],
-    ["HeroRig", 140, 330, "", 12],
+    ["HeroRig", 212, 465, "", 12],
     ["Gate", 865, 130, "", 8, 72, 340],
     ["Gate", 1825, 130, "", 8, 72, 340],
     ["HudMain", 20, 16, "HUD", 50],
@@ -387,7 +387,9 @@ try {
   events.push(comment("01 · RESPONSIVE PLATFORMER MOVEMENT AND DASH"));
   events.push(standard([], [
     instruction("SetX", ["HeroRig", "=", "Player.X()+72"]),
-    instruction("SetY", ["HeroRig", "=", "Player.Y()-32"]),
+    // A Spine object's origin is the skeleton root (the hero's foot line),
+    // while Player.Y() is the top of the invisible platformer hitbox.
+    instruction("SetY", ["HeroRig", "=", "Player.Y()+Player.Height()"]),
   ]));
   events.push(standard([...gameplayState, key("a")], [
     instruction("PlatformBehavior::SimulateLeftKey", ["Player", "Platformer"]),
