@@ -19,7 +19,9 @@ Play the production build: https://shadow-paws-roguelite.vercel.app
 
 ## Vertical slice
 
-- Three connected chapters with a scrolling camera and encounter gates.
+- Three visually distinct connected chapters: the Shattered Forest, the
+  Moon-Eclipse Bridge, and the Heart of the Rift altar, each with its own
+  background, platform material, silhouette language, and encounter space.
 - Responsive platformer movement, three-hit combo, heavy attack, dash, hit
   flash, camera shake, knock-through invulnerability, and procedural sound FX.
 - A native Spine cutout rig with 15 bones, 13 painted attachments, and nine

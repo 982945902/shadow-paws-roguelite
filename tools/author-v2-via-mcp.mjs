@@ -111,11 +111,17 @@ try {
 
   const resources = {
     "rift-background-v2.png": "rift-background-v2.png",
+    "rift-bridge-ch2.png": "rift-bridge-ch2.png",
+    "rift-altar-ch3.png": "rift-altar-ch3.png",
     "hero-v2.png": "hero-v2.png",
     "hound-v2.png": "hound-v2.png",
     "moth-v2.png": "moth-v2.png",
     "boss-v2.png": "boss-v2.png",
     "ground.svg": "ground.svg",
+    "bridge-ground.svg": "bridge-ground.svg",
+    "altar-ground.svg": "altar-ground.svg",
+    "spirit-lantern.svg": "spirit-lantern.svg",
+    "rift-pillar.svg": "rift-pillar.svg",
     "gem.svg": "gem.svg",
     "slash-v2.svg": "slash-v2.svg",
     "heavy-slash-v2.svg": "heavy-slash-v2.svg",
@@ -207,14 +213,32 @@ try {
     },
   });
   const objects = [
-    { name: "Background", type: "Sprite", resourceName: "rift-background-v2.png" },
+    { name: "ForestBackground", type: "Sprite", resourceName: "rift-background-v2.png" },
+    { name: "BridgeBackground", type: "Sprite", resourceName: "rift-bridge-ch2.png" },
+    { name: "AltarBackground", type: "Sprite", resourceName: "rift-altar-ch3.png" },
     {
-      name: "Ground",
+      name: "ForestGround",
       type: "Sprite",
       resourceName: "ground.svg",
       collisionMask: { width: 128, height: 64 },
       behaviors: [{ name: "Platform", type: "PlatformBehavior::PlatformBehavior", properties: {} }],
     },
+    {
+      name: "BridgeGround",
+      type: "Sprite",
+      resourceName: "bridge-ground.svg",
+      collisionMask: { width: 128, height: 64 },
+      behaviors: [{ name: "Platform", type: "PlatformBehavior::PlatformBehavior", properties: {} }],
+    },
+    {
+      name: "AltarGround",
+      type: "Sprite",
+      resourceName: "altar-ground.svg",
+      collisionMask: { width: 128, height: 64 },
+      behaviors: [{ name: "Platform", type: "PlatformBehavior::PlatformBehavior", properties: {} }],
+    },
+    { name: "SpiritLantern", type: "Sprite", resourceName: "spirit-lantern.svg" },
+    { name: "RiftPillar", type: "Sprite", resourceName: "rift-pillar.svg" },
     {
       name: "Player",
       type: "Sprite",
@@ -313,13 +337,21 @@ try {
   }
 
   const instances = [
-    ["Background", -300, 0, "", -100, 1260, 540],
-    ["Background", 960, 0, "", -100, 960, 540],
-    ["Background", 1920, 0, "", -100, 960, 540],
-    ["Ground", -200, 470, "", 0, 3400, 100],
-    ["Ground", 330, 350, "", 1, 220, 30],
-    ["Ground", 1260, 330, "", 1, 220, 30],
-    ["Ground", 2160, 360, "", 1, 250, 30],
+    ["ForestBackground", -150, 0, "", -100, 1260, 540],
+    ["BridgeBackground", -150, 0, "", -100, 1260, 540],
+    ["AltarBackground", -150, 0, "", -100, 1260, 540],
+    ["ForestGround", -200, 470, "", 0, 1160, 100],
+    ["ForestGround", 330, 350, "", 1, 220, 30],
+    ["ForestGround", 640, 405, "", 1, 130, 24],
+    ["BridgeGround", 960, 470, "", 0, 960, 100],
+    ["BridgeGround", 1100, 390, "", 1, 170, 28],
+    ["BridgeGround", 1375, 315, "", 1, 170, 28],
+    ["BridgeGround", 1650, 390, "", 1, 150, 28],
+    ["AltarGround", 1920, 470, "", 0, 1200, 100],
+    ["SpiritLantern", 985, 255, "", -3, 58, 190],
+    ["SpiritLantern", 1785, 255, "", -3, 58, 190],
+    ["RiftPillar", 1940, 170, "", -4, 110, 300],
+    ["RiftPillar", 2760, 170, "", -4, 110, 300],
     ["Player", 140, 355, "", 10, 110, 110],
     ["HeroRig", 212, 465, "", 12],
     ["Gate", 865, 130, "", 8, 72, 340],
@@ -368,7 +400,7 @@ try {
         resetObjectTimer("Player", "combo"),
         resetObjectTimer("Player", "pose"),
         resetSceneTimer("hitstop"), layerTimeScale(1),
-        hide("Player"), hide("HeroRig"), hide("Gate"), hide("HudMain"), hide("HudSub"), hide("Controls"), hide("RoomBanner"),
+        hide("Player"), hide("HeroRig"), hide("Gate"), hide("BridgeBackground"), hide("AltarBackground"), hide("HudMain"), hide("HudSub"), hide("Controls"), hide("RoomBanner"),
         hide("UpgradeTitle"), hide("ChoiceA"), hide("ChoiceB"), hide("ChoiceC"),
         hide("BossHud"), hide("DeathText"), hide("VictoryText"),
       ],
@@ -383,6 +415,16 @@ try {
     ]),
   );
   events.push(standard([sceneTimer("banner", 2.2)], [hide("RoomBanner")]));
+
+  events.push(comment("00B · CHAPTER-SPECIFIC ART DIRECTION AND CAMERA BACKDROPS"));
+  events.push(standard([], [
+    instruction("SetX", ["ForestBackground", "=", "max(480,min(Player.X()+55,2400))-630"]),
+    instruction("SetX", ["BridgeBackground", "=", "max(480,min(Player.X()+55,2400))-630"]),
+    instruction("SetX", ["AltarBackground", "=", "max(480,min(Player.X()+55,2400))-630"]),
+  ]));
+  events.push(standard([sceneIs("Room", "=", 1)], [show("ForestBackground"), hide("BridgeBackground"), hide("AltarBackground")]));
+  events.push(standard([sceneIs("Room", "=", 2)], [hide("ForestBackground"), show("BridgeBackground"), hide("AltarBackground")]));
+  events.push(standard([sceneIs("Room", "=", 3)], [hide("ForestBackground"), hide("BridgeBackground"), show("AltarBackground")]));
 
   events.push(comment("01 · RESPONSIVE PLATFORMER MOVEMENT AND DASH"));
   events.push(standard([], [
@@ -653,13 +695,23 @@ try {
   ]));
 
   if (process.env.GDEVELOP_GAME_TEST_MODE === "1") {
+    const testRoom = Math.max(1, Math.min(3, Number(process.env.GDEVELOP_GAME_TEST_ROOM || 1)));
+    const testPlayerX = { 1: 300, 2: 1200, 3: 2180 }[testRoom];
     events.push(comment("TEST MODE · T isolates the hero rig for browser verification"));
+    events.push(standard([once()], [
+      sceneVar("TestMode", "=", 1), sceneVar("State", "=", 1), sceneVar("Room", "=", testRoom),
+      sceneVar("Alive", "=", 1), sceneVar("SpawnRemaining", "=", 0),
+      show("Player"), show("HeroRig"), show("Gate"), show("HudMain"), show("HudSub"), show("Controls"),
+      hide("TitleText"), hide("SubtitleText"), hide("StartText"), hide("RoomBanner"),
+      instruction("SetX", ["Player", "=", testPlayerX]), instruction("SetY", ["Player", "=", 355]),
+      instruction("Opacity", ["Player", "=", 0]),
+    ]));
     events.push(standard([key("t")], [sceneVar("TestMode", "=", 1), sceneVar("State", "=", 1), show("Player"), show("HeroRig")]));
     events.push(standard([sceneIs("TestMode", "=", 1)], [
       instruction("Delete", ["Hound", ""]), instruction("Delete", ["Moth", ""]), instruction("Delete", ["Boss", ""]),
       instruction("Delete", ["Bolt", ""]), instruction("Delete", ["Shockwave", ""]),
       sceneVar("Alive", "=", 1), sceneVar("SpawnRemaining", "=", 0), objectVar("Player", "Health", "=", 160),
-      instruction("SetX", ["Player", "=", 300]), instruction("Opacity", ["Player", "=", 0]),
+      instruction("Opacity", ["Player", "=", 0]),
     ]));
     events.push(standard([sceneIs("TestMode", "=", 1), key("y")], [
       animation("heavy"),
@@ -668,6 +720,12 @@ try {
     ]));
     events.push(standard([sceneIs("TestMode", "=", 1), key("i")], [
       animation("idle"), instruction("AnimatableCapability::AnimatableBehavior::PlayAnimation", ["HeroRig", "Animation"]),
+    ]));
+    events.push(standard([sceneIs("TestMode", "=", 1), key("u")], [
+      sceneVar("Room", "=", 2), instruction("SetX", ["Player", "=", 1200]),
+    ]));
+    events.push(standard([sceneIs("TestMode", "=", 1), key("o")], [
+      sceneVar("Room", "=", 3), instruction("SetX", ["Player", "=", 2180]),
     ]));
   }
 

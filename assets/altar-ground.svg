@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="64" viewBox="0 0 128 64">
+  <defs>
+    <linearGradient id="obsidian" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#29162e"/>
+      <stop offset="1" stop-color="#0d0915"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="128" height="64" fill="url(#obsidian)"/>
+  <path d="M0 14h128M22 14v21m39-21v21m45-21v21M0 36h128M39 36v28m49-28v28" stroke="#4d294f" stroke-width="3"/>
+  <path d="M2 7h26m10 0h30m9 0h49" stroke="#ff4fc3" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M14 20l15 9-8 12 13 10M75 16l-8 12 11 9-7 15M110 19l-10 10 8 11" fill="none" stroke="#c533a5" stroke-width="2.4" filter="url(#glow)"/>
+</svg>
