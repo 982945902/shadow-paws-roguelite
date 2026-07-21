@@ -49,10 +49,12 @@ Play the production build: https://shadow-paws-roguelite.vercel.app
   risk, family ranks, equipment, camera shake, and persistent run statistics.
 - Object variables hold health, damage, combo state, facing, dash state, and
   build modifiers.
-- Nine collapsible event groups contain 195 native events, with zero JavaScript
+- Nine collapsible event groups contain 207 native events, with zero JavaScript
   events, including nested events.
 - Native object groups collect enemies, player attacks, hostile attacks, and
   platforms. Room instances carry structured editable metadata.
+- The authored 960×540 view is pillarboxed on wider displays so HUD overlays,
+  room boundaries, and title backgrounds never expose adjacent scenes.
 - `game.json` is the editable source of truth; `web/` is a reproducible GDJS export.
 
 ## Regenerate through MCP

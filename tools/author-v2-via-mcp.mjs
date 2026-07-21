@@ -67,6 +67,7 @@ const sceneIs = (name, operator, value) => instruction("VarScene", [name, operat
 const objectIs = (object, name, operator, value) =>
   instruction("VarObjet", [object, name, operator, value]);
 const sceneVar = (name, operator, value) => instruction("ModVarScene", [name, operator, value]);
+const sceneTextVar = (name, operator, value) => instruction("ModVarSceneTxt", [name, operator, value]);
 const objectVar = (object, name, operator, value) =>
   instruction("ModVarObjet", [object, name, operator, value]);
 const create = (name, x, y, layer = "") => instruction("Create", ["", name, x, y, layer]);
@@ -109,6 +110,12 @@ try {
     renderingType: "2d",
     width: 960,
     height: 540,
+    adaptGameResolutionAtRuntime: false,
+    sizeOnStartupMode: "",
+    loadingBackgroundResourceName: "rift-background-v2.png",
+    loadingBackgroundColor: 0x080b21,
+    loadingMinDuration: 0.35,
+    showGDevelopSplash: false,
     overwrite: true,
   });
   const projectId = created.projectId;
@@ -567,9 +574,12 @@ try {
 
   events.push(comment("00B · GENERATED BIOMES AND CAMERA BACKDROPS"));
   events.push(standard([], [
-    instruction("SetX", ["ForestBackground", "=", "max(480,min(Player.X()+55,5280))-630"]),
-    instruction("SetX", ["BridgeBackground", "=", "max(480,min(Player.X()+55,5280))-630"]),
-    instruction("SetX", ["AltarBackground", "=", "max(480,min(Player.X()+55,5280))-630"]),
+    instruction("SetX", ["ForestBackground", "=", "max(480,min(Player.X()+55,5280))-SceneWindowWidth()/2"]),
+    instruction("SetX", ["BridgeBackground", "=", "max(480,min(Player.X()+55,5280))-SceneWindowWidth()/2"]),
+    instruction("SetX", ["AltarBackground", "=", "max(480,min(Player.X()+55,5280))-SceneWindowWidth()/2"]),
+    ...resize("ForestBackground", "SceneWindowWidth()", "SceneWindowHeight()"),
+    ...resize("BridgeBackground", "SceneWindowWidth()", "SceneWindowHeight()"),
+    ...resize("AltarBackground", "SceneWindowWidth()", "SceneWindowHeight()"),
   ]));
   events.push(standard([sceneIs("Biome", "=", 1)], [show("ForestBackground"), hide("BridgeBackground"), hide("AltarBackground")]));
   events.push(standard([sceneIs("Biome", "=", 2)], [hide("ForestBackground"), show("BridgeBackground"), hide("AltarBackground")]));
@@ -717,7 +727,10 @@ try {
       sceneVar("Alive", "+", 1), sceneVar("SpawnRemaining", "-", 1), resetSceneTimer("spawn"), sceneVar("Shake", "=", 5),
     ]));
     events.push(standard([...gameplayState, sceneIs("Room", "=", room), instruction("PosX", ["Player", ">", roomEnd - 140])], [instruction("SetX", ["Player", "=", roomEnd - 140])]));
+    events.push(standard([...gameplayState, sceneIs("Room", "=", room), instruction("PosX", ["Player", "<", roomStart + 40])], [instruction("SetX", ["Player", "=", roomStart + 40])]));
   }
+  events.push(standard([...gameplayState, sceneIs("Room", "=", 6), instruction("PosX", ["Player", "<", 4840])], [instruction("SetX", ["Player", "=", 4840])]));
+  events.push(standard([...gameplayState, sceneIs("Room", "=", 6), instruction("PosX", ["Player", ">", 5800])], [instruction("SetX", ["Player", "=", 5800])]));
 
   events.push(comment("04 · ENEMY AI, RANGED FIRE, AND THE RIFT WARDEN"));
   events.push(standard([...gameplayState, objectTimer("Hound", "frost", ">", "Hound.Variable(Frost)"), instruction("PosX", ["Hound", ">", "Player.X()+36"])], [
@@ -744,6 +757,8 @@ try {
   ]));
   events.push(standard([...gameplayState, instruction("PosX", ["Boss", ">", "Player.X()+70"])], [instruction("PlatformBehavior::SimulateLeftKey", ["Boss", "Platformer"])]));
   events.push(standard([...gameplayState, instruction("PosX", ["Boss", "<", "Player.X()-70"])], [instruction("PlatformBehavior::SimulateRightKey", ["Boss", "Platformer"])]));
+  events.push(standard([...gameplayState, instruction("PosX", ["Boss", "<", 4900])], [instruction("SetX", ["Boss", "=", 4900])]));
+  events.push(standard([...gameplayState, instruction("PosX", ["Boss", ">", 5700])], [instruction("SetX", ["Boss", "=", 5700])]));
   events.push(standard([objectIs("Boss", "Health", "<=", "Boss.Variable(MaxHealth)/2"), objectIs("Boss", "Phase", "=", 1)], [
     objectVar("Boss", "Phase", "=", 2), instruction("PlatformBehavior::MaxSpeed", ["Boss", "Platformer", "+", 85]),
     sceneVar("Shake", "=", 16), play("boss-roar.wav", 100, 1.05),
@@ -763,8 +778,10 @@ try {
     const knockback = enemyObject === "Boss" ? (heavy ? 22 : 12) : (heavy ? 54 : 30);
     return standard(
       [
+        ...gameplayState,
         collision(attackObject, enemyObject),
         objectIs(attackObject, "Crit", critical ? "<=" : ">", "Player.Variable(CritChance)"),
+        once(),
       ],
       [
         objectVar(enemyObject, "Health", "-", `${attackObject}.Variable(Damage)*${critical ? 1.75 : 1}`),
@@ -851,6 +868,12 @@ try {
     show("UpgradeTitle"), show("ChoiceA"), show("ChoiceB"), show("ChoiceC"), play("pickup.wav", 84, 0.78),
   ]);
   for (let room = 1; room <= 5; room += 1) events.push(offerUpgrade(room));
+  events.push(standard([sceneIs("State", "=", 2), sceneIs("ChoiceC", "=", "Variable(ChoiceA)")], [
+    sceneVar("ChoiceC", "=", "1+mod(Variable(ChoiceC),12)"),
+  ]));
+  events.push(standard([sceneIs("State", "=", 2), sceneIs("ChoiceC", "=", "Variable(ChoiceB)")], [
+    sceneVar("ChoiceC", "=", "1+mod(Variable(ChoiceC),12)"),
+  ]));
   for (const [choiceObject, variableName, keyNumber] of [["ChoiceA", "ChoiceA", 1], ["ChoiceB", "ChoiceB", 2], ["ChoiceC", "ChoiceC", 3]]) {
     events.push(standard([sceneIs("State", "=", 2)], [
       instruction("TextObject::String", [
@@ -928,7 +951,7 @@ try {
       ...actions,
       sceneVar("Affix", "=", id),
       sceneVar("AffixTier", "+", 1),
-      sceneVar("AffixName", "=", `GlobalVariableString(Content.Affixes[${Number(id) - 1}].Name)`),
+      sceneTextVar("AffixName", "=", `GlobalVariableString(Content.Affixes[${Number(id) - 1}].Name)`),
       instruction("TextObject::String", ["RoomBanner", "=", `"ABYSS GEAR  ·  "+GlobalVariableString(Content.Affixes[${Number(id) - 1}].Name)+"  ·  TIER "+ToString(Variable(AffixTier))`]),
       sceneVar("PendingAffix", "=", 0),
       play("pickup.wav", 96, 0.68),
@@ -936,6 +959,17 @@ try {
   }
 
   events.push(comment("07 · HUD, CAMERA SHAKE, DEFEAT, VICTORY, AND RESTART"));
+  events.push(standard([], [
+    instruction("SetX", ["MenuBackdrop", "=", 0]),
+    instruction("SetY", ["MenuBackdrop", "=", 0]),
+    ...resize("MenuBackdrop", "SceneWindowWidth()", "SceneWindowHeight()"),
+    ...[
+      "TitleText", "SubtitleText", "StartText", "MetaText",
+      "WeaponTitle", "WeaponA", "WeaponB", "WeaponC",
+      "RoomBanner", "UpgradeTitle", "ChoiceA", "ChoiceB", "ChoiceC",
+      "PathTitle", "PathSafe", "PathAbyss", "BossHud", "DeathText", "VictoryText",
+    ].map((objectName) => instruction("SetCenterX", [objectName, "=", "SceneWindowWidth()/2"])),
+  ]));
   events.push(standard([sceneIs("State", ">", 0), sceneIs("Weapon", ">", 0)], [
     instruction("TextObject::String", ["HudMain", "=", '"HP  "+ToString(max(0,ceil(Player.Variable(Health))))+" / "+ToString(Player.Variable(MaxHealth))+"     DEPTH  "+ToString(Variable(Room))+" / "+ToString(Variable(MaxRoom))+"     RISK  "+ToString(Variable(Risk))']),
     instruction("TextObject::String", ["HudSub", "=", '"ECHOES  "+ToString(Variable(RunEchoes))+"     KILLS  "+ToString(Variable(Kills))+"     DAMAGE  "+ToString(Player.Variable(Damage))+"     CRIT  "+ToString(Player.Variable(CritChance))+"%"']),
@@ -1008,6 +1042,13 @@ try {
       ...(testCase === "affix"
         ? [sceneVar("Risk", "=", 1), sceneVar("RewardMultiplier", "=", 1.5), sceneVar("PendingAffix", "=", 5), show("RoomBanner")]
         : []),
+      ...(testCase === "combat"
+        ? [
+            create("Hound", testPlayerX + 260, 394), ...resize("Hound", 145, 76),
+            objectVar("Hound", "Health", "=", 120), objectVar("Hound", "MaxHealth", "=", 120),
+            objectVar("Hound", "Damage", "=", 8), objectVar("Hound", "Reward", "=", 1),
+          ]
+        : []),
       ...(testCase === "defeat" ? [objectVar("Player", "Health", "=", 0)] : []),
     ]));
     if (testCase === "phase2" || testCase === "victory") {
@@ -1015,6 +1056,21 @@ try {
         sceneIs("TestMode", "=", 1), sceneIs("BossSpawned", "=", 1), objectIs("Boss", "Phase", "=", 1), once(),
       ], [
         objectVar("Boss", "Health", "=", testCase === "phase2" ? "Boss.Variable(MaxHealth)/2-1" : 0),
+      ]));
+    }
+    if (testCase === "combat") {
+      events.push(standard([
+        sceneIs("TestMode", "=", 1), sceneIs("State", "=", 1), instruction("PosX", ["Player", "<", "Hound.X()-105"]),
+      ], [
+        instruction("SetX", ["Player", "+", "260*TimeDelta()"]), animation("run"),
+      ]));
+      events.push(standard([
+        sceneIs("TestMode", "=", 1), sceneIs("State", "=", 1), instruction("PosX", ["Player", ">=", "Hound.X()-125"]),
+        objectTimer("Player", "attack", ">", 0.3),
+      ], [
+        create("Slash", "Player.X()+62", "Player.Y()+8"),
+        objectVar("Slash", "Damage", "=", 40), objectVar("Slash", "Burn", "=", 0), objectVar("Slash", "Crit", "=", 100),
+        resetObjectTimer("Slash", "life"), resetObjectTimer("Player", "attack"), animation("attack1"),
       ]));
     }
     events.push(standard([sceneIs("TestMode", "=", 1), sceneIs("State", "<", 3), key("Return"), once()], [

@@ -5,8 +5,14 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const project = JSON.parse(await fs.readFile(path.join(root, "game.json"), "utf8"));
+const authorSource = await fs.readFile(path.join(root, "tools", "author-v2-via-mcp.mjs"), "utf8");
 const scene = project.layouts.find((layout) => layout.name === "Game");
 assert.ok(scene, "Game scene is missing");
+assert.equal(project.properties.adaptGameResolutionAtRuntime, false, "The 16:9 game view must not reveal extra rooms on wide displays");
+assert.equal(project.properties.sizeOnStartupMode, "", "The authored 960×540 camera must remain stable");
+assert.equal(project.properties.loadingScreen.backgroundImageResourceName, "rift-background-v2.png", "Loading screen must use a real resource");
+assert.equal(project.properties.loadingScreen.minDuration, 0.35, "Loading screen should not impose a long artificial delay");
+assert.equal(project.properties.loadingScreen.showGDevelopSplash, false, "Custom loading should not show the default splash");
 
 const walkEvents = (events) => events.flatMap((event) => [event, ...walkEvents(event.events || [])]);
 const allEvents = walkEvents(scene.events);
@@ -77,8 +83,52 @@ assert.ok(actionCount("LoadFile") >= 1, "Persistent progression must load storag
 assert.ok(actionCount("ReadNumberFromStorage") >= 3, "Persistent progression values must be restored");
 assert.ok(actionCount("EcrireFichierExp") >= 6, "Victory and defeat must bank progression");
 assert.ok(actionCount("Scene") >= 1, "Victory and defeat must support a native scene restart");
+assert.equal(
+  allInstructions.filter((item) => instructionType(item) === "ModVarSceneTxt" && item.parameters?.[0] === "AffixName").length,
+  6,
+  "Every gear affix must assign its string name with the typed string action",
+);
+assert.equal(
+  allInstructions.filter((item) => instructionType(item) === "ModVarScene" && item.parameters?.[0] === "AffixName").length,
+  0,
+  "String affix names must never use numeric variable actions",
+);
 assert.ok(actionCount("Create") >= 50, "Generated encounters and weapon attacks are missing");
 assert.ok(actionCount("ModVarScene") >= 250, "Run, build, and route state actions are incomplete");
+assert.ok(actionCount("SetCenterX") >= 19, "Responsive HUD centering is incomplete");
+
+const responsiveWidths = allInstructions.filter(
+  (item) => instructionType(item) === "ResizableCapability::ResizableBehavior::SetWidth" &&
+    item.parameters?.[3] === "SceneWindowWidth()",
+);
+for (const objectName of ["ForestBackground", "BridgeBackground", "AltarBackground", "MenuBackdrop"]) {
+  assert.ok(
+    responsiveWidths.some((item) => item.parameters?.[0] === objectName),
+    `${objectName} must cover the complete runtime width`,
+  );
+}
+
+const attackNames = new Set(["Slash", "HeavySlash", "PlayerBolt"]);
+const enemyNames = new Set(["Hound", "Moth", "Boss"]);
+const hitEvents = allEvents.filter((event) => event.conditions?.some((item) => {
+  if (instructionType(item) !== "CollisionNP") return false;
+  return attackNames.has(item.parameters?.[0]) && enemyNames.has(item.parameters?.[1]);
+}));
+assert.equal(hitEvents.length, 18, "Expected critical and normal resolution for every attack/enemy pair");
+for (const event of hitEvents) {
+  assert.ok(event.conditions.some((item) => instructionType(item) === "VarScene" && item.parameters?.[0] === "State" && item.parameters?.[2] === "1"), "Attack damage must be restricted to active gameplay");
+  assert.ok(event.conditions.some((item) => instructionType(item) === "BuiltinCommonInstructions::Once"), "Each attack overlap must resolve only once");
+}
+
+const playerHorizontalBounds = allEvents.filter((event) =>
+  event.conditions?.some((item) => instructionType(item) === "PosX" && item.parameters?.[0] === "Player"),
+);
+assert.ok(playerHorizontalBounds.length >= 12, "Every room needs left and right arena bounds");
+const choiceCDeduplication = allEvents.filter((event) =>
+  event.actions?.some((item) => instructionType(item) === "ModVarScene" && item.parameters?.[0] === "ChoiceC" && item.parameters?.[2] === "1+mod(Variable(ChoiceC),12)"),
+);
+assert.equal(choiceCDeduplication.length, 2, "Blessing offers must eliminate duplicate third choices");
+assert.match(authorSource, /testCase === "combat"[\s\S]*create\("Hound"/, "Combat smoke mode must create a real enemy");
 for (const resourceName of ["hero-rig-v3.json", "hero-rig-v3.atlas", "hound-v2.png", "moth-v2.png", "boss-v2.png", "slash.wav", "impact.wav", "hit-confirm.wav", "heavy-impact.wav"]) {
   assert.ok(
     project.resources.resources.some((resource) => resource.name === resourceName),
