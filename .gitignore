@@ -1,4 +1,5 @@
 node_modules/
 web/
+web-test/
 .DS_Store
 .vercel
